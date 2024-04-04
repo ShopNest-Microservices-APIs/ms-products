@@ -54,7 +54,7 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
       });
   }
 
-  async update(id: number, updateProductDto: UpdateProductDto) {
+  async update(updateProductDto: UpdateProductDto) {
     const isDtoEmpty = Object.values(updateProductDto).every(
       (value) => value === null || value === undefined,
     );
@@ -62,10 +62,12 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
     if (isDtoEmpty)
       throw new BadRequestException('No data provided for update');
 
+    const { id, ...data } = updateProductDto;
+
     return await this.product
       .update({
         where: { id },
-        data: updateProductDto,
+        data: data,
       })
       .catch((error) => {
         if (error instanceof PrismaClientKnownRequestError) {
