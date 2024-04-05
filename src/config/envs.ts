@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { z, object } from 'zod';
 
 interface EnvVars {
