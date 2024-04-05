@@ -1,15 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaClient } from '@prisma/client';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class ProductsService extends PrismaClient implements OnModuleInit {
@@ -21,7 +16,14 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
   }
 
   create(createProductDto: CreateProductDto) {
-    return this.product.create({ data: createProductDto });
+    try {
+      return this.product.create({ data: createProductDto });
+    } catch (error) {
+      throw new RpcException({
+        message: error,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
   }
 
   async findAll(paginationDto: PaginationDto) {
@@ -48,8 +50,12 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
     return this.product
       .findUnique({ where: { id, available: true } })
       .then((product) => {
-        if (!product)
-          throw new NotFoundException(`Product with id: ${id} not found`);
+        if (!product) {
+          throw new RpcException({
+            message: `Product with id: ${id} not found`,
+            status: HttpStatus.BAD_REQUEST,
+          });
+        }
         return product;
       });
   }
@@ -59,8 +65,12 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
       (value) => value === null || value === undefined,
     );
 
-    if (isDtoEmpty)
-      throw new BadRequestException('No data provided for update');
+    if (isDtoEmpty) {
+      throw new RpcException({
+        message: 'No data provided for update',
+        status: HttpStatus.BAD_REQUEST,
+      });
+    }
 
     const { id, ...data } = updateProductDto;
 
@@ -71,7 +81,10 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
       })
       .catch((error) => {
         if (error instanceof PrismaClientKnownRequestError) {
-          throw new NotFoundException(`Product with id: ${id} not found`);
+          throw new RpcException({
+            message: `Product with id: ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
         }
         throw error;
       });
@@ -85,7 +98,10 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
       })
       .catch((error) => {
         if (error instanceof PrismaClientKnownRequestError) {
-          throw new NotFoundException(`Product with id: ${id} not found`);
+          throw new RpcException({
+            message: `Product with id: ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
         }
         throw error;
       });
