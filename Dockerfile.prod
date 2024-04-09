@@ -1,0 +1,61 @@
+# Etapa de dependencias
+FROM node:21-alpine3.19 as deps
+
+# Definir el directorio de trabajo
+WORKDIR /usr/src/app
+
+# Copiar los archivos de descripción de paquetes
+COPY package*.json ./
+
+# Instalar todas las dependencias, incluidas las de desarrollo
+RUN npm install
+
+# Etapa de construcción
+FROM node:21-alpine3.19 as builder
+
+ARG MS_PRODUCTS_DB_URL
+RUN echo $MS_PRODUCTS_DB_URL
+ENV DATABASE_URL=$MS_PRODUCTS_DB_URL
+
+# Definir el directorio de trabajo
+WORKDIR /usr/src/app
+
+# Copiar las dependencias instaladas en la etapa anterior
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+
+# Copiar el código fuente de la aplicación
+COPY . .
+
+# Compilar la aplicación
+RUN npm run build
+
+# Instalar solo las dependencias de producción de forma forzada y limpiar la caché de npm
+RUN npm ci -f --only=production && npm cache clean --force
+
+RUN npx prisma generate
+
+# Verificar la existencia del directorio Prisma
+RUN ls -l /usr/src/app/prisma
+
+# Etapa de producción
+FROM node:21-alpine3.19 as prod
+
+# Definir el directorio de trabajo
+WORKDIR /usr/src/app
+
+# Copiar las dependencias de producción y el código compilado desde la etapa de construcción
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/prisma ./prisma
+
+# Establecer el entorno de Node en producción
+ENV NODE_ENV=production
+
+# Establecer el usuario de ejecución como "node" para fines de seguridad
+USER node
+
+# Exponer el puerto en el que escucha la aplicación
+EXPOSE 3000
+
+# Comando de inicio de la aplicación
+CMD ["node", "dist/main.js"]
