@@ -15,9 +15,10 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
     this.logger.log('Connected to the database');
   }
 
-  create(createProductDto: CreateProductDto) {
+  async create(createProductDto: CreateProductDto) {
     try {
-      return this.product.create({ data: createProductDto });
+      const product = await this.product.create({ data: createProductDto });
+      return product;
     } catch (error) {
       throw new RpcException({
         message: error,
@@ -47,7 +48,7 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
   }
 
   async findOne(id: number) {
-    return this.product
+    return await this.product
       .findUnique({ where: { id, available: true } })
       .then((product) => {
         if (!product) {
@@ -91,7 +92,7 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
   }
 
   async remove(id: number) {
-    return this.product
+    return await this.product
       .update({
         where: { id, available: true },
         data: { available: false },
