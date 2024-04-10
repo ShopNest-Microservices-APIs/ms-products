@@ -1,0 +1,18 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-east1-docker.pkg.dev/shop-microservices-419818/shop-registry/ms-authentication",
+        "-f",
+        "Dockerfile.prod",
+        "--platform=linux/amd64",
+        ".",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-east1-docker.pkg.dev/shop-microservices-419818/shop-registry/ms-authentication",
+      ]
